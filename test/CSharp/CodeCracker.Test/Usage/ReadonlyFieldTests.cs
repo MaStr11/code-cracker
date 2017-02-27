@@ -991,5 +991,63 @@ class Test
 }";
             await VerifyCSharpHasNoDiagnosticsAsync(source);
         }
+
+        [Fact]
+        public async Task CollectionInitializerWithReadonlyIsIgnored()
+        {
+            // see https://github.com/code-cracker/code-cracker/issues/873
+            var source = @"
+using System.Collections.Specialized;
+public sealed class Class1
+{
+    private static readonly StringCollection s1 = new StringCollection
+    {
+        ""1"",
+        ""2""
+    }
+    private static readonly StringCollection s2 = new StringCollection
+    {
+        ""1"",
+        ""2""
+    }
+}";
+            await VerifyCSharpHasNoDiagnosticsAsync(source);
+        }
+
+        [Fact]
+        public async Task CollectionInitializerCreatesADiagnostic()
+        {
+            // see https://github.com/code-cracker/code-cracker/issues/873
+            var source = @"
+using System.Collections.Specialized;
+public sealed class Class1
+{
+    private static StringCollection s1 = new StringCollection
+    {
+        ""1"",
+        ""2""
+    }
+    private static StringCollection s2 = new StringCollection
+    {
+        ""1"",
+        ""2""
+    }
+}";
+            var expected1 = new DiagnosticResult
+            {
+                Id = DiagnosticId.ReadonlyField.ToDiagnosticId(),
+                Message = string.Format(ReadonlyFieldAnalyzer.Message, "s1"),
+                Severity = DiagnosticSeverity.Info,
+                Locations = new[] { new DiagnosticResultLocation("Test0.cs", 5, 37) }
+            };
+            var expected2 = new DiagnosticResult
+            {
+                Id = DiagnosticId.ReadonlyField.ToDiagnosticId(),
+                Message = string.Format(ReadonlyFieldAnalyzer.Message, "s2"),
+                Severity = DiagnosticSeverity.Info,
+                Locations = new[] { new DiagnosticResultLocation("Test0.cs", 10, 37) }
+            };
+            await VerifyCSharpDiagnosticAsync(source, expected1, expected2);
+        }
     }
 }
